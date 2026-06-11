@@ -100,25 +100,88 @@ compatibility: 웹 접근 가능 환경 (WebSearch, WebFetch 필요)
 
 ---
 
-## 수집 대상
+## 🌐 웹 수집 소스 (8개 한정)
 
-### 📰 **주요 뉴스 채널**
-- OpenAI, Google DeepMind, Meta AI 공식 발표
-- 주요 과학 저널 (Nature, Science, ArXiv)
-- 기술 미디어 (TechCrunch, The Verge, MIT Technology Review)
-- AI 전문 미디어 (Hugging Face, Papers with Code)
+> 정확성과 신뢰도를 위해 엄선된 8개 소스에서만 수집합니다.
 
-### 🌍 **지역별 뉴스**
-- **해외**: 미국, 유럽, 중국 AI 동향
-- **국내**: 한국 AI 산업, 스타트업, 정부 정책
+### 📰 **지정된 웹 수집 소스**
 
-### 🎯 **카테고리**
-- 🤖 대규모 모델 (LLM)
-- 🎨 생성형 AI (이미지, 비디오)
-- 🧠 머신러닝 기술
-- 💼 기업 및 투자
-- 📜 정책 및 규제
-- 🏫 교육 및 연구
+| # | 소스 | 분야 | 업데이트 |
+|---|------|------|---------|
+| 1 | **OpenAI 공식 블로그** | ChatGPT, GPT 모델 | 주 2-3회 |
+| 2 | **Google DeepMind 블로그** | Gemini, 기초 연구 | 주 1-2회 |
+| 3 | **HackerNews (AI 섹션)** | 기술 뉴스 종합 | 일 10-20개 |
+| 4 | **TechCrunch (AI 섹션)** | 스타트업, 투자 | 일 5-10개 |
+| 5 | **뉴스1 / 연합뉴스 (AI 섹션)** | 국내 AI 뉴스 | 일 3-5개 |
+| 6 | **ArXiv (AI 분야)** | AI 학술 논문 | 일 50+ 논문 |
+| 7 | **Papers with Code** | 새 모델 & 코드 | 일 10+ 논문 |
+| 8 | **Reddit r/MachineLearning** | AI 커뮤니티 | 일 20+ 게시물 |
+
+### 🎯 **각 소스별 역할**
+
+```
+1️⃣ OpenAI 블로그
+   → ChatGPT, GPT 최신 업데이트
+   → 공식 발표 및 기술 해설
+
+2️⃣ Google DeepMind 블로그
+   → Gemini 관련 뉴스
+   → AI 기초 연구 논문
+
+3️⃣ HackerNews
+   → 업계 핫 이슈 종합
+   → 개발자 커뮤니티 반응
+
+4️⃣ TechCrunch
+   → AI 스타트업 소식
+   → 투자 및 인수합병
+
+5️⃣ 국내 뉴스 매체
+   → 한국 AI 정책
+   → 국내 기업 뉴스
+
+6️⃣ ArXiv
+   → 최신 학술 논문
+   → 미래 기술 트렌드
+
+7️⃣ Papers with Code
+   → 실제 구현된 모델
+   → 비교 가능한 성능 지표
+
+8️⃣ Reddit
+   → 커뮤니티 의견
+   → 실제 활용 사례
+```
+
+### 📊 **수집 프로세스**
+
+```
+매일 09:00 AM
+  ↓
+[8개 소스 병렬 검색]
+  ├─ Source 1: OpenAI 블로그 검색
+  ├─ Source 2: Google DeepMind 블로그 검색
+  ├─ Source 3: HackerNews 크롤링
+  ├─ Source 4: TechCrunch 크롤링
+  ├─ Source 5: 국내 뉴스 검색
+  ├─ Source 6: ArXiv 최신 논문
+  ├─ Source 7: Papers with Code 최신
+  └─ Source 8: Reddit 트렌딩
+  ↓
+[결과 통합]
+  - 중복 제거
+  - 신뢰도 검증
+  - 우선순위 정렬
+  ↓
+[TOP 5 뉴스 선정 및 정리]
+```
+
+### ✅ **신뢰도 기준**
+
+- ✅ **신뢰**: 공식 발표, 검증된 소스
+- ✅ **최신**: 24시간 이내 정보
+- ✅ **다양성**: 여러 각도의 정보
+- ❌ **제외**: 미검증 루머, 낡은 정보, 광고성 콘텐츠
 
 ---
 
