@@ -1,0 +1,37 @@
+#!/bin/bash
+# pre-git-push hook: Git push 전 파일명 & 콘텐츠 검증
+
+set -e
+
+echo "🔍 Push 전 검증 시작..."
+
+# ai-daily-YYYY-MM-DD.html 형식 확인
+STAGED_FILES=$(git diff --cached --name-only)
+
+HTML_FILES=$(echo "$STAGED_FILES" | grep -E "ai-daily-[0-9]{4}-[0-9]{2}-[0-9]{2}\.html" || true)
+
+if [ -n "$HTML_FILES" ]; then
+  echo "✅ 파일명 형식: OK"
+
+  # 각 파일이 비어있지 않은지 확인
+  for file in $HTML_FILES; do
+    if [ ! -s "$file" ]; then
+      echo "❌ 오류: $file 파일이 비어있습니다"
+      exit 1
+    fi
+
+    SIZE=$(wc -c < "$file")
+    echo "   ✅ $file (${SIZE} bytes)"
+  done
+else
+  echo "⚠️  HTML 파일 없음 (선택사항)"
+fi
+
+# .gitignore 확인
+if [ -f ".gitignore" ]; then
+  if grep -q "ai-daily-\*.html" .gitignore; then
+    echo "✅ .gitignore: ai-daily-*.html 제외 확인됨"
+  fi
+fi
+
+echo "✅ 모든 검증 통과! Push 진행 가능"

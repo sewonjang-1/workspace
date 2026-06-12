@@ -1,0 +1,65 @@
+#!/bin/bash
+# pre-workflow hook: Workflow 시작 전 환경 체크
+
+echo "🔧 Workflow 시작 전 환경 체크"
+echo "=================================="
+
+# 1. Git 인증 확인
+echo "1️⃣ Git 인증 체크..."
+if git config --global credential.helper | grep -q "cache"; then
+  echo "   ✅ Credential Cache 설정됨"
+else
+  echo "   ⚠️  Credential Cache 미설정 → 첫 push 시 PAT 입력 필요"
+  git config --global credential.helper cache
+  git config --global credential.helper cache --timeout=3600
+  echo "   ✅ Credential Cache 설정 완료"
+fi
+
+# 2. 필수 CLI 도구 확인
+echo "2️⃣ 필수 도구 확인..."
+REQUIRED_TOOLS=("git" "gh" "python3")
+for tool in "${REQUIRED_TOOLS[@]}"; do
+  if command -v "$tool" &> /dev/null; then
+    VERSION=$($tool --version 2>&1 | head -n1)
+    echo "   ✅ $tool: 설치됨"
+  else
+    echo "   ❌ $tool: 설치 필요!"
+    exit 1
+  fi
+done
+
+# 3. GitHub 인증 확인
+echo "3️⃣ GitHub 인증 체크..."
+if gh auth status &> /dev/null; then
+  echo "   ✅ gh CLI 인증됨"
+else
+  echo "   ⚠️  gh CLI 인증 필요"
+  echo "   실행: gh auth login"
+fi
+
+# 4. 저장소 상태 확인
+echo "4️⃣ 저장소 상태 확인..."
+if [ -d ".git" ]; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  STATUS=$(git status --porcelain | wc -l)
+  echo "   ✅ Git 저장소: $BRANCH 브랜치"
+  echo "   ℹ️  변경사항: $STATUS개"
+else
+  echo "   ❌ Git 저장소 아님"
+  exit 1
+fi
+
+# 5. 필수 디렉토리 확인
+echo "5️⃣ 디렉토리 구조 확인..."
+for dir in ".claude/agents" ".claude/skills" ".claude/hooks"; do
+  if [ -d "$dir" ]; then
+    echo "   ✅ $dir"
+  else
+    echo "   ⚠️  $dir (생성 필요)"
+    mkdir -p "$dir"
+  fi
+done
+
+echo ""
+echo "✅ 모든 환경 체크 완료!"
+echo "Workflow 시작 가능 ✓"

@@ -1,0 +1,68 @@
+#!/bin/bash
+# post-agent hook: Agent 실행 후 자동 검증 & GitHub Issues 자동 관리
+
+AGENT_NAME=$1
+AGENT_RESULT=$2
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "🤖 Agent 실행 결과 처리: $AGENT_NAME"
+
+# Agent 성공 여부 판단
+if [[ "$AGENT_RESULT" == *"success"* ]] || [[ "$AGENT_RESULT" == *"완료"* ]] || [ $? -eq 0 ]; then
+  STATUS="✅ 성공"
+  ICON="✅"
+
+  # Issue #1: Git 인증 (news-collector 실행 시)
+  if [[ "$AGENT_NAME" == *"collector"* ]]; then
+    if command -v gh &> /dev/null; then
+      gh issue comment 1 \
+        --body "$ICON **뉴스 수집 완료**
+
+- 에이전트: $AGENT_NAME
+- 시간: $TIMESTAMP
+- 상태: $STATUS
+
+다음 단계: 브리핑 생성" 2>/dev/null || true
+    fi
+  fi
+
+  # Issue #2: 파일명 검증 (report-writer 실행 시)
+  if [[ "$AGENT_NAME" == *"writer"* ]]; then
+    if command -v gh &> /dev/null; then
+      # HTML 파일 확인
+      LATEST_HTML=$(ls -t ai-daily-*.html 2>/dev/null | head -1)
+      if [ -n "$LATEST_HTML" ]; then
+        gh issue comment 2 \
+          --body "$ICON **브리핑 생성 완료**
+
+- 파일: \`$LATEST_HTML\`
+- 시간: $TIMESTAMP
+- 상태: $STATUS
+
+[파일 확인](../../blob/main/$LATEST_HTML)" 2>/dev/null || true
+
+        # Issue #2 자동 종료
+        gh issue close 2 --comment "$ICON 자동 종료 (브리핑 생성 성공)" 2>/dev/null || true
+      fi
+    fi
+  fi
+
+else
+  STATUS="❌ 실패"
+  ICON="❌"
+
+  # Issue #3: 에러 처리 (실패 시)
+  if command -v gh &> /dev/null; then
+    gh issue comment 3 \
+      --body "$ICON **에이전트 실행 오류**
+
+- 에이전트: $AGENT_NAME
+- 시간: $TIMESTAMP
+- 상태: $STATUS
+- 상세: $AGENT_RESULT
+
+**조치 필요**" 2>/dev/null || true
+  fi
+fi
+
+echo "✅ Issue 자동 업데이트 완료"

@@ -1,0 +1,36 @@
+#!/bin/bash
+# post-file-write hook: ai-daily-*.html 생성 시 자동 검증 & GitHub Issues 댓글
+
+FILE=$1
+
+# HTML 파일 생성 감지
+if [[ "$FILE" == *ai-daily-*.html ]]; then
+  echo "🔍 HTML 파일 검증 중: $FILE"
+
+  # 파일 크기 확인
+  if [ ! -s "$FILE" ]; then
+    echo "❌ 오류: 파일이 비어있습니다"
+    exit 1
+  fi
+
+  SIZE=$(wc -c < "$FILE")
+  LINES=$(wc -l < "$FILE")
+
+  echo "✅ 파일 생성 완료"
+  echo "   - 파일: $FILE"
+  echo "   - 크기: ${SIZE} bytes"
+  echo "   - 라인: ${LINES} lines"
+
+  # GitHub Issues #2에 자동 댓글 (파일 생성 알림)
+  if command -v gh &> /dev/null; then
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    gh issue comment 2 \
+      --body "✅ **브리핑 생성 완료**
+
+- 파일: \`$FILE\`
+- 크기: ${SIZE} bytes
+- 생성 시간: $TIMESTAMP
+
+[파일 보기](../../blob/main/$FILE)" 2>/dev/null || true
+  fi
+fi

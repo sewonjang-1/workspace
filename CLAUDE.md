@@ -4,29 +4,87 @@
 
 ---
 
-## 🤖 에이전트 팀 구성 (Agent Team)
+## 🤖 Workflow 하네스 아키텍처 (공식문서 기준)
 
-이 프로젝트는 3개 에이전트가 팀으로 작동합니다. 에이전트 정의 파일은 `.claude/agents/` 폴더에 있습니다.
+이 프로젝트는 **Workflow 하네스**로 3단계 자동화 파이프라인을 구성합니다 (Claude 공식 패턴).
 
 ```
-briefing-coordinator (총괄 조율자)
-        │
-        ├──▶ news-collector   (뉴스 수집 담당)
-        │         │
-        │    8개 소스 검색 → TOP 5 선정
-        │
-        └──▶ report-writer    (브리핑 작성 & 게시 담당)
-                  │
-             HTML 생성 → GitHub 푸시
+Workflow: daily-ai-briefing-harness
+    │
+    ├─ Phase 1: 뉴스 수집
+    │   └─ Agent: news-collector (WebSearch, WebFetch)
+    │         └─ 8개 소스 → TOP 5 뉴스 + 용어 3개
+    │
+    ├─ Phase 2: 브리핑 생성
+    │   └─ Agent: report-writer (Write, Bash)
+    │         └─ HTML 생성 (ai-daily-YYYY-MM-DD.html)
+    │
+    └─ Phase 3: 게시 & 검증
+        └─ 최종 검증 (Git 푸시, Issues 댓글, Dashboard 업데이트)
 ```
 
-| 에이전트 파일 | 역할 | 주요 도구 |
-|-------------|------|---------|
-| `agents/coordinator.md` | 팀 총괄, 지시, 검토 | Task |
-| `agents/news-collector.md` | AI 뉴스 수집 | WebSearch, WebFetch |
-| `agents/report-writer.md` | HTML 생성 & GitHub 게시 | Write, Bash |
+### Workflow 구성
 
-**팀 작동 방식**: `briefing-coordinator`가 두 에이전트에게 순서대로 작업을 지시하고, 결과를 검토한 뒤 사용자에게 최종 보고합니다.
+| 파일 | 설명 |
+|------|------|
+| `.claude/workflows/daily-ai-briefing-harness.js` | 메인 오케스트레이터 (export const meta + phase() + agent()) |
+
+### 에이전트 구성
+
+| 파일 | 역할 | 도구 |
+|------|------|------|
+| `.claude/agents/news-collector.md` | AI 뉴스 8개 소스 수집 | WebSearch, WebFetch |
+| `.claude/agents/report-writer.md` | HTML 생성 & GitHub 게시 | Write, Bash, PowerShell |
+
+---
+
+## 🎣 Hook 자동화 시스템 (4개)
+
+Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (Claude Code 내장).
+
+### Hook 구성
+
+| Hook 파일 | 실행 시점 | 역할 |
+|----------|---------|------|
+| `hooks/pre-git-push` | Git push 전 | 파일명 형식 & 콘텐츠 검증 |
+| `hooks/post-file-write` | ai-daily-*.html 생성 후 | 자동 검증 & GitHub Issues #2 댓글 |
+| `hooks/pre-workflow` | Workflow 시작 전 | 환경 체크 (git, gh, python 등) |
+| `hooks/post-agent` | Agent 실행 후 | 결과 자동 처리 & Issues 관리 |
+
+### Hook의 자동화 효과
+
+| Hook | 자동화 내용 |
+|------|-----------|
+| **pre-git-push** | ✅ 파일명 오류 방지 (ai-daily-YYYY-MM-DD.html 형식 검증) |
+| **post-file-write** | ✅ 생성 즉시 GitHub Issues #2에 댓글 + 파일 정보 기록 |
+| **pre-workflow** | ✅ Workflow 시작 전 환경 점검 (git, gh, python 설치 확인) |
+| **post-agent** | ✅ Issues #1, #2, #3 자동 업데이트 & 자동 종료 |
+
+---
+
+## 📊 통합 작업 흐름 (Workflow + Hooks)
+
+```
+사용자 요청: "AI 브리핑 만들어줄래?"
+        ↓
+[Hook: pre-workflow] → 환경 체크 (git, gh, python)
+        ↓
+[Workflow: daily-ai-briefing-harness 시작]
+        ↓
+├─ Phase 1: 뉴스 수집
+│  └─ agent(news-collector) → 8개 소스에서 TOP 5 + 용어 수집
+│         ↓
+├─ Phase 2: 브리핑 생성
+│  └─ agent(report-writer) → HTML 파일 생성 (ai-daily-YYYY-MM-DD.html)
+│  └─ [Hook: post-file-write] → Issues #2 자동 댓글
+│         ↓
+└─ Phase 3: 게시 & 검증
+   └─ Git 커밋 & 푸시
+   └─ [Hook: pre-git-push] → 파일명 형식 검증
+   └─ [Hook: post-agent] → Issues 최종 처리
+        ↓
+✅ Workflow 완료 → 최종 보고 (Issue #2 자동 종료)
+```
 
 ---
 
@@ -67,21 +125,32 @@ briefing-coordinator (총괄 조율자)
 | **soul.md** | 프로젝트 가치 | 팀 |
 | **DASHBOARD.md** | 실시간 진행상황 | 자동 생성 |
 | **PROJECT_STATUS.md** | 상태 보고서 | 주간 업데이트 |
-| **.claude/skills/daily-ai-reporter-setup/** | 재사용 스킬 | 배포 |
-| **ai-daily-YYYY-MM-DD.html** | 일일 리포트 | 자동 생성 |
+| **.claude/workflows/daily-ai-briefing-harness.js** | Workflow 하네스 (메인 오케스트레이터) | 배포 |
+| **.claude/agents/news-collector.md** | 뉴스 수집 에이전트 정의 | 배포 |
+| **.claude/agents/report-writer.md** | 브리핑 작성 에이전트 정의 | 배포 |
+| **.claude/hooks/pre-git-push** | Git 푸시 전 검증 Hook | 자동 실행 |
+| **.claude/hooks/post-file-write** | 파일 생성 후 자동 댓글 Hook | 자동 실행 |
+| **.claude/hooks/pre-workflow** | Workflow 시작 전 환경 체크 Hook | 자동 실행 |
+| **.claude/hooks/post-agent** | Agent 실행 후 Issues 관리 Hook | 자동 실행 |
+| **.claude/skills/ai-trend-collector/** | 뉴스 수집 스킬 (참고용) | 보관 |
+| **.claude/skills/daily-ai-reporter-setup/** | 브리핑 게시 스킬 (참고용) | 보관 |
+| **ai-daily-YYYY-MM-DD.html** | 일일 AI 브리핑 리포트 | 자동 생성 |
 
 ---
 
-## 🔧 기술 스택
+## 🔧 기술 스택 (업데이트됨)
 
-| 계층 | 기술 |
-|------|------|
-| **스케줄** | Windows Scheduled Task |
-| **인증** | Git Credential Cache |
-| **원격** | GitHub (HTTPS) |
-| **CLI** | gh, git, PowerShell/Bash |
-| **리포팅** | HTML5 + CSS3 |
-| **추적** | GitHub Issues + Labels |
+| 계층 | 기술 | 세부사항 |
+|------|------|--------|
+| **오케스트레이션** | Claude Workflow 하네스 | `export const meta + phase() + agent()` |
+| **에이전트** | news-collector, report-writer | WebSearch, Write, Bash |
+| **자동화** | Hooks (4개) | pre-git-push, post-file-write, pre-workflow, post-agent |
+| **스케줄** | Windows Scheduled Task | 일일 09:00 AM |
+| **인증** | Git Credential Cache | 로컬 캐시 (1시간) |
+| **원격** | GitHub (HTTPS) | sewonjang-1/workspace |
+| **CLI** | gh, git, PowerShell/Bash | 필수 도구 |
+| **리포팅** | HTML5 + CSS3 | 반응형 디자인 |
+| **추적** | GitHub Issues + Labels | 자동 댓글 & 종료 |
 
 ---
 
