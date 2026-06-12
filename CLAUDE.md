@@ -42,8 +42,9 @@ Workflow: daily-ai-briefing-harness
 
 Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (Claude Code 내장).
 
-### Hook 구성
+### Hook 구성 (7개)
 
+**기본 Hook (4개)**
 | Hook 파일 | 실행 시점 | 역할 |
 |----------|---------|------|
 | `hooks/pre-git-push` | Git push 전 | 파일명 형식 & 콘텐츠 검증 |
@@ -51,23 +52,38 @@ Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (C
 | `hooks/pre-workflow` | Workflow 시작 전 | 환경 체크 (git, gh, python 등) |
 | `hooks/post-agent` | Agent 실행 후 | 결과 자동 처리 & Issues 관리 |
 
-### Hook의 자동화 효과
+**테스트 Hook (3개)**
+| Hook 파일 | 실행 시점 | 역할 |
+|----------|---------|------|
+| `hooks/post-agent-test` | Agent 실행 후 | **자동테스트** (HTML 형식, 콘텐츠, Git 상태) |
+| `hooks/test-html-validation` | HTML 생성 후 | **상세 검증** (인코딩, CSS, 반응형, 링크, 날짜, 크기) |
+| `hooks/test-workflow-validation` | Workflow 후 | **결과 검증** (모든 Phase 완료 확인) |
 
-| Hook | 자동화 내용 |
-|------|-----------|
+### Hook의 자동화 & 테스트 효과
+
+**자동화 효과**
+| Hook | 내용 |
+|------|------|
 | **pre-git-push** | ✅ 파일명 오류 방지 (ai-daily-YYYY-MM-DD.html 형식 검증) |
 | **post-file-write** | ✅ 생성 즉시 GitHub Issues #2에 댓글 + 파일 정보 기록 |
 | **pre-workflow** | ✅ Workflow 시작 전 환경 점검 (git, gh, python 설치 확인) |
 | **post-agent** | ✅ Issues #1, #2, #3 자동 업데이트 & 자동 종료 |
 
+**자동테스트 효과**
+| Hook | 테스트 항목 |
+|------|-----------|
+| **post-agent-test** | 🧪 HTML 파일 생성 확인 / 파일명 형식 / 최소 크기(5KB) / DOCTYPE / 뉴스 섹션 / 용어 섹션 / 트렌드 섹션 / 뉴스 개수(최소 3개) / Git 상태 |
+| **test-html-validation** | 🔍 UTF-8 인코딩 / CSS 스타일 / 반응형 설계 / 외부 링크 / 날짜 표시 / 한글 콘텐츠 / 파일 크기 최적화 |
+| **test-workflow-validation** | 🔬 Phase 1 뉴스 수집 / Phase 2 HTML 생성 / Phase 3 Git 커밋 / GitHub 푸시 / DASHBOARD.md 업데이트 / 환경 상태 |
+
 ---
 
-## 📊 통합 작업 흐름 (Workflow + Hooks)
+## 📊 통합 작업 흐름 (Workflow + Hooks + 테스트)
 
 ```
 사용자 요청: "AI 브리핑 만들어줄래?"
         ↓
-[Hook: pre-workflow] → 환경 체크 (git, gh, python)
+[Hook: pre-workflow] → 환경 체크 (git, gh, python) ✅
         ↓
 [Workflow: daily-ai-briefing-harness 시작]
         ↓
@@ -76,14 +92,17 @@ Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (C
 │         ↓
 ├─ Phase 2: 브리핑 생성
 │  └─ agent(report-writer) → HTML 파일 생성 (ai-daily-YYYY-MM-DD.html)
-│  └─ [Hook: post-file-write] → Issues #2 자동 댓글
+│  └─ [Hook: post-file-write] → Issues #2 자동 댓글 ✅
+│  └─ [Hook: test-html-validation] → 인코딩, CSS, 반응형 검증 🔍
 │         ↓
 └─ Phase 3: 게시 & 검증
    └─ Git 커밋 & 푸시
-   └─ [Hook: pre-git-push] → 파일명 형식 검증
-   └─ [Hook: post-agent] → Issues 최종 처리
+   └─ [Hook: pre-git-push] → 파일명 형식 검증 ✅
+   └─ [Hook: post-agent] → Issues 최종 처리 ✅
+   └─ [Hook: post-agent-test] → HTML 콘텐츠 자동테스트 🧪
+   └─ [Hook: test-workflow-validation] → Phase 1/2/3 결과 검증 🔬
         ↓
-✅ Workflow 완료 → 최종 보고 (Issue #2 자동 종료)
+✅ 모든 테스트 통과 → 최종 보고 (Issue #2 자동 종료)
 ```
 
 ---
@@ -132,6 +151,9 @@ Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (C
 | **.claude/hooks/post-file-write** | 파일 생성 후 자동 댓글 Hook | 자동 실행 |
 | **.claude/hooks/pre-workflow** | Workflow 시작 전 환경 체크 Hook | 자동 실행 |
 | **.claude/hooks/post-agent** | Agent 실행 후 Issues 관리 Hook | 자동 실행 |
+| **.claude/hooks/post-agent-test** | Agent 후 자동테스트 Hook (HTML 형식, 콘텐츠, Git) | 자동 실행 |
+| **.claude/hooks/test-html-validation** | HTML 상세 검증 Hook (인코딩, CSS, 반응형 등) | 자동 실행 |
+| **.claude/hooks/test-workflow-validation** | Workflow 결과 검증 Hook (Phase 1/2/3) | 자동 실행 |
 | **.claude/skills/ai-trend-collector/** | 뉴스 수집 스킬 (참고용) | 보관 |
 | **.claude/skills/daily-ai-reporter-setup/** | 브리핑 게시 스킬 (참고용) | 보관 |
 | **ai-daily-YYYY-MM-DD.html** | 일일 AI 브리핑 리포트 | 자동 생성 |
@@ -144,7 +166,8 @@ Hook은 특정 이벤트 발생 시 자동 실행되는 shell 명령입니다 (C
 |------|------|--------|
 | **오케스트레이션** | Claude Workflow 하네스 | `export const meta + phase() + agent()` |
 | **에이전트** | news-collector, report-writer | WebSearch, Write, Bash |
-| **자동화** | Hooks (4개) | pre-git-push, post-file-write, pre-workflow, post-agent |
+| **자동화** | Hooks (7개) | pre-git-push, post-file-write, pre-workflow, post-agent |
+| **자동테스트** | Test Hooks (3개) | post-agent-test, test-html-validation, test-workflow-validation |
 | **스케줄** | Windows Scheduled Task | 일일 09:00 AM |
 | **인증** | Git Credential Cache | 로컬 캐시 (1시간) |
 | **원격** | GitHub (HTTPS) | sewonjang-1/workspace |

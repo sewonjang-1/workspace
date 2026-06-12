@@ -1,0 +1,77 @@
+#!/bin/bash
+# test-html-validation hook: HTML 파일 상세 검증
+
+echo "🔍 HTML 상세 검증 시작"
+
+LATEST_HTML=$(ls -t ai-daily-*.html 2>/dev/null | head -1)
+
+if [ -z "$LATEST_HTML" ]; then
+  echo "❌ HTML 파일 없음"
+  exit 1
+fi
+
+echo "검증 대상: $LATEST_HTML"
+echo "=================================="
+
+# 1. 인코딩 확인
+echo "1️⃣ 인코딩 확인..."
+if grep -q "charset=UTF-8\|charset=utf-8" "$LATEST_HTML"; then
+  echo "   ✅ UTF-8 인코딩"
+else
+  echo "   ⚠️  WARN: UTF-8 명시 안 됨"
+fi
+
+# 2. CSS 스타일 확인
+echo "2️⃣ 스타일시트 확인..."
+if grep -q "<style>\|<link.*css" "$LATEST_HTML"; then
+  echo "   ✅ CSS 스타일 포함"
+else
+  echo "   ⚠️  WARN: CSS 없음"
+fi
+
+# 3. 반응형 디자인 확인
+echo "3️⃣ 반응형 설계 확인..."
+if grep -q "viewport\|@media" "$LATEST_HTML"; then
+  echo "   ✅ 반응형 설계 포함"
+else
+  echo "   ⚠️  WARN: 반응형 미설정"
+fi
+
+# 4. 링크 유효성 확인
+echo "4️⃣ 외부 링크 확인..."
+LINK_COUNT=$(grep -o 'href="http[s]*://[^"]*"' "$LATEST_HTML" | wc -l)
+if [ $LINK_COUNT -gt 0 ]; then
+  echo "   ✅ $LINK_COUNT개 외부 링크 발견"
+else
+  echo "   ⚠️  WARN: 외부 링크 없음"
+fi
+
+# 5. 날짜 형식 확인
+echo "5️⃣ 날짜 표시 확인..."
+if grep -qE "[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}년.*월.*일|[0-9]{2}:[0-9]{2}" "$LATEST_HTML"; then
+  echo "   ✅ 날짜/시간 표시됨"
+else
+  echo "   ⚠️  WARN: 날짜 표시 없음"
+fi
+
+# 6. 한글 콘텐츠 확인
+echo "6️⃣ 한글 콘텐츠 확인..."
+KOREAN_COUNT=$(grep -o "[가-힣]" "$LATEST_HTML" | wc -l)
+if [ $KOREAN_COUNT -gt 100 ]; then
+  echo "   ✅ 충분한 한글 콘텐츠 ($KOREAN_COUNT자)"
+else
+  echo "   ⚠️  WARN: 한글 콘텐츠 부족 ($KOREAN_COUNT자)"
+fi
+
+# 7. 파일 크기 최적화 확인
+SIZE=$(wc -c < "$LATEST_HTML")
+if [ "$SIZE" -gt 100000 ]; then
+  echo "7️⃣ 파일 크기 확인..."
+  echo "   ⚠️  WARN: 파일이 큼 (${SIZE} bytes, 100KB 초과)"
+else
+  echo "7️⃣ 파일 크기: ${SIZE} bytes ✅"
+fi
+
+echo ""
+echo "=================================="
+echo "✅ HTML 상세 검증 완료"

@@ -1,0 +1,89 @@
+#!/bin/bash
+# test-workflow-validation hook: Workflow 실행 결과 검증
+
+echo "🔬 Workflow 실행 결과 검증"
+echo "=================================="
+
+TEST_FAIL=0
+
+# 1. 뉴스 수집 결과 확인
+echo "1️⃣ Phase 1 결과 확인 (뉴스 수집)..."
+if [ -f "news_data.json" ] || grep -q "뉴스\|news" .git/logs/HEAD 2>/dev/null; then
+  echo "   ✅ 뉴스 수집 기록 있음"
+else
+  echo "   ⚠️  WARN: 뉴스 수집 기록 없음"
+fi
+
+# 2. HTML 생성 확인
+echo "2️⃣ Phase 2 결과 확인 (HTML 생성)..."
+LATEST_HTML=$(ls -t ai-daily-*.html 2>/dev/null | head -1)
+if [ -n "$LATEST_HTML" ] && [ -s "$LATEST_HTML" ]; then
+  echo "   ✅ HTML 파일 생성됨: $LATEST_HTML"
+else
+  echo "   ❌ HTML 파일 생성 실패"
+  ((TEST_FAIL++))
+fi
+
+# 3. Git 커밋 확인
+echo "3️⃣ Phase 3 결과 확인 (Git 커밋)..."
+LAST_COMMIT=$(git log -1 --oneline 2>/dev/null)
+if [[ "$LAST_COMMIT" == *"AI 브리핑"* ]] || [[ "$LAST_COMMIT" == *"feat"* ]]; then
+  echo "   ✅ 최신 커밋: $LAST_COMMIT"
+else
+  echo "   ⚠️  WARN: 브리핑 관련 커밋 없음"
+fi
+
+# 4. GitHub 푸시 확인
+echo "4️⃣ GitHub 푸시 확인..."
+if git rev-parse --verify origin/main 2>/dev/null | grep -q .; then
+  LOCAL=$(git rev-parse main)
+  REMOTE=$(git rev-parse origin/main)
+  if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "   ✅ 로컬과 원격 동기화됨"
+  else
+    echo "   ⚠️  WARN: 로컬 커밋이 푸시되지 않음"
+  fi
+else
+  echo "   ⚠️  WARN: 원격 저장소 없음"
+fi
+
+# 5. DASHBOARD.md 업데이트 확인
+echo "5️⃣ DASHBOARD.md 업데이트 확인..."
+if [ -f "DASHBOARD.md" ]; then
+  DASHBOARD_TIME=$(stat -f "%Sm" -t "%Y-%m-%d" "DASHBOARD.md" 2>/dev/null || stat -c "%y" "DASHBOARD.md" 2>/dev/null | cut -d' ' -f1)
+  TODAY=$(date '+%Y-%m-%d')
+  if [[ "$DASHBOARD_TIME" == *"$TODAY"* ]]; then
+    echo "   ✅ DASHBOARD.md 오늘 업데이트됨"
+  else
+    echo "   ⚠️  WARN: DASHBOARD.md 업데이트 필요"
+  fi
+else
+  echo "   ⚠️  WARN: DASHBOARD.md 없음"
+fi
+
+# 6. 환경 체크
+echo "6️⃣ 환경 상태 확인..."
+MISSING=0
+for cmd in git gh python3; do
+  if ! command -v "$cmd" &> /dev/null; then
+    echo "   ❌ $cmd 설치 필요"
+    ((MISSING++))
+  fi
+done
+if [ $MISSING -eq 0 ]; then
+  echo "   ✅ 모든 필수 도구 설치됨"
+else
+  echo "   ❌ $MISSING개 도구 누락"
+  ((TEST_FAIL++))
+fi
+
+echo ""
+echo "=================================="
+
+if [ $TEST_FAIL -eq 0 ]; then
+  echo "✅ Workflow 검증 통과!"
+  exit 0
+else
+  echo "❌ Workflow 검증 실패 ($TEST_FAIL개)"
+  exit 1
+fi

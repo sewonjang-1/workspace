@@ -1,0 +1,126 @@
+#!/bin/bash
+# post-agent-test hook: Agent 실행 후 결과 자동 검증
+
+AGENT_NAME=$1
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "🧪 자동테스트 시작: $AGENT_NAME"
+echo "=================================="
+
+# 테스트 1: HTML 파일 생성 검증
+test_html_file() {
+  echo "1️⃣ HTML 파일 검증..."
+
+  LATEST_HTML=$(ls -t ai-daily-*.html 2>/dev/null | head -1)
+
+  if [ -z "$LATEST_HTML" ]; then
+    echo "   ❌ FAIL: HTML 파일이 생성되지 않았습니다"
+    return 1
+  fi
+
+  # 파일명 형식 검증 (ai-daily-YYYY-MM-DD.html)
+  if ! [[ "$LATEST_HTML" =~ ai-daily-[0-9]{4}-[0-9]{2}-[0-9]{2}\.html ]]; then
+    echo "   ❌ FAIL: 파일명 형식 오류 ($LATEST_HTML)"
+    return 1
+  fi
+
+  SIZE=$(wc -c < "$LATEST_HTML")
+  LINES=$(wc -l < "$LATEST_HTML")
+
+  # 최소 크기 확인 (최소 5KB)
+  if [ "$SIZE" -lt 5000 ]; then
+    echo "   ❌ FAIL: 파일이 너무 작음 (${SIZE} bytes, 최소 5000 bytes)"
+    return 1
+  fi
+
+  echo "   ✅ PASS: $LATEST_HTML"
+  echo "      - 크기: ${SIZE} bytes"
+  echo "      - 라인: ${LINES} lines"
+  return 0
+}
+
+# 테스트 2: HTML 콘텐츠 검증
+test_html_content() {
+  echo "2️⃣ HTML 콘텐츠 검증..."
+
+  LATEST_HTML=$(ls -t ai-daily-*.html 2>/dev/null | head -1)
+
+  if [ -z "$LATEST_HTML" ]; then
+    return 0  # 파일이 없으면 스킵
+  fi
+
+  FAIL_COUNT=0
+
+  # DOCTYPE 확인
+  if ! grep -q "<!DOCTYPE html>" "$LATEST_HTML"; then
+    echo "   ❌ DOCTYPE 누락"
+    ((FAIL_COUNT++))
+  fi
+
+  # 필수 섹션 확인
+  if ! grep -q "<section.*top-news" "$LATEST_HTML" && ! grep -q "주요 뉴스\|TOP 5" "$LATEST_HTML"; then
+    echo "   ❌ 뉴스 섹션 누락"
+    ((FAIL_COUNT++))
+  fi
+
+  if ! grep -q "<section.*terms" "$LATEST_HTML" && ! grep -q "용어\|AI 용어" "$LATEST_HTML"; then
+    echo "   ❌ 용어 섹션 누락"
+    ((FAIL_COUNT++))
+  fi
+
+  if ! grep -q "<section.*trends" "$LATEST_HTML" && ! grep -q "트렌드\|국내\|해외" "$LATEST_HTML"; then
+    echo "   ❌ 트렌드 섹션 누락"
+    ((FAIL_COUNT++))
+  fi
+
+  # 뉴스 개수 확인 (최소 3개)
+  NEWS_COUNT=$(grep -o "<h3>" "$LATEST_HTML" 2>/dev/null | wc -l)
+  if [ "$NEWS_COUNT" -lt 3 ]; then
+    echo "   ⚠️  뉴스 개수 적음 ($NEWS_COUNT개, 최소 3개)"
+    ((FAIL_COUNT++))
+  fi
+
+  if [ $FAIL_COUNT -eq 0 ]; then
+    echo "   ✅ PASS: 모든 필수 섹션 포함"
+    echo "      - 뉴스 항목: $NEWS_COUNT개"
+    return 0
+  else
+    echo "   ❌ FAIL: $FAIL_COUNT개 문제 발견"
+    return 1
+  fi
+}
+
+# 테스트 3: Git 상태 검증
+test_git_status() {
+  echo "3️⃣ Git 상태 검증..."
+
+  # 커밋되지 않은 변경사항 확인
+  if git diff --quiet --exit-code; then
+    echo "   ✅ PASS: 모든 변경사항 커밋됨"
+    return 0
+  else
+    CHANGED=$(git diff --name-only | wc -l)
+    echo "   ⚠️  WARN: 커밋되지 않은 변경사항 $CHANGED개"
+    return 0  # 경고이지만 실패는 아님
+  fi
+}
+
+# 모든 테스트 실행
+TOTAL_FAIL=0
+
+test_html_file || ((TOTAL_FAIL++))
+test_html_content || ((TOTAL_FAIL++))
+test_git_status
+
+echo ""
+echo "=================================="
+
+if [ $TOTAL_FAIL -eq 0 ]; then
+  echo "✅ 모든 자동테스트 통과!"
+  echo "Timestamp: $TIMESTAMP"
+  exit 0
+else
+  echo "❌ 자동테스트 실패 ($TOTAL_FAIL개)"
+  echo "Timestamp: $TIMESTAMP"
+  exit 1
+fi
