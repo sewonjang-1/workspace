@@ -2,6 +2,34 @@
 
 > 이 파일은 프로젝트의 기술적 기초, 아키텍처, 개발 가이드를 정의합니다.
 
+---
+
+## 🤖 에이전트 팀 구성 (Agent Team)
+
+이 프로젝트는 3개 에이전트가 팀으로 작동합니다. 에이전트 정의 파일은 `.claude/agents/` 폴더에 있습니다.
+
+```
+briefing-coordinator (총괄 조율자)
+        │
+        ├──▶ news-collector   (뉴스 수집 담당)
+        │         │
+        │    8개 소스 검색 → TOP 5 선정
+        │
+        └──▶ report-writer    (브리핑 작성 & 게시 담당)
+                  │
+             HTML 생성 → GitHub 푸시
+```
+
+| 에이전트 파일 | 역할 | 주요 도구 |
+|-------------|------|---------|
+| `agents/coordinator.md` | 팀 총괄, 지시, 검토 | Task |
+| `agents/news-collector.md` | AI 뉴스 수집 | WebSearch, WebFetch |
+| `agents/report-writer.md` | HTML 생성 & GitHub 게시 | Write, Bash |
+
+**팀 작동 방식**: `briefing-coordinator`가 두 에이전트에게 순서대로 작업을 지시하고, 결과를 검토한 뒤 사용자에게 최종 보고합니다.
+
+---
+
 ## 프로젝트 개요
 
 **이름:** Daily AI Reporter Automation  
