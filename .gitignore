@@ -34,10 +34,11 @@ wheels/
 # Project specific - Generated Reports
 reports/
 outputs/
-ai-daily-*.html
-*.html
 logs/
 *.log
+
+# HTML 보고서는 커밋 (매일 생성되는 최종 산출물)
+# ai-daily-*.html는 커밋함
 
 # Temporary files
 *.tmp
